@@ -1,0 +1,85 @@
+# ============================================================================
+# Optimization configuration
+# ============================================================================
+# This file is the operator-facing spec for an optimization run.
+# It pairs with config/extraction_schema.yaml (the schema being optimized)
+# and config/pipeline.yaml (OCR + storage settings).
+
+# ----------------------------------------------------------------------------
+# Spec - the formal run contract
+# ----------------------------------------------------------------------------
+spec:
+  name: "default-optimization"
+  description: >
+    Optimize the extraction schema until the dev-set targets below are met,
+    or the iteration / budget caps are reached.
+
+  # ALL targets must be satisfied to terminate "satisfied".
+  # If exhausted (max iterations or wall clock), best Pareto candidate is promoted.
+  targets:
+    - name: mean_field_f1
+      threshold: 0.92
+      direction: maximize
+      on: dev
+    - name: validator_pass_rate
+      threshold: 0.95
+      direction: maximize
+      on: dev
+
+  # SOFT budget caps. Soft mode logs a warning at threshold and continues.
+  # Wall-clock IS hard-enforced (ralph loop terminates when exceeded).
+  budget:
+    max_dollars: 50.0
+    max_total_tokens: 5000000
+    max_wall_clock_seconds: 14400    # 4 hours
+
+  # Loop structure
+  ralph_max_iterations: 5
+  gepa_max_iterations: 5
+  candidates_per_gepa_iteration: 4
+  convergence_patience: 2            # Stop GEPA after N rounds without improvement
+
+  # Pareto frontier objectives (order doesn't imply priority - all are tracked)
+  pareto_objectives:
+    - mean_field_f1
+    - mean_judge_score
+    - validator_pass_rate
+
+# ----------------------------------------------------------------------------
+# LLM models - separate models per role
+# ----------------------------------------------------------------------------
+# Cost-realistic defaults: Flash for the heavy extraction loop, stronger
+# model for the proposer (where reasoning quality dominates).
+llm:
+  # Model invoked once per (candidate, dev_doc) - the bulk of cost
+  extraction:
+    provider: gemini
+    model: gemini-2.0-flash-exp
+    temperature: 0.0
+
+  # Model used by the reflection + proposal agents - higher temp for diversity
+  optimizer:
+    provider: gemini
+    model: gemini-1.5-pro
+    temperature: 0.7
+
+  # LLM-as-judge for semantic correctness (only called for incorrect fields)
+  judge:
+    provider: gemini
+    model: gemini-2.0-flash-exp
+    temperature: 0.0
+
+# ----------------------------------------------------------------------------
+# Document ingestion (overrides pipeline.yaml if present)
+# ----------------------------------------------------------------------------
+ocr:
+  strategy: native_first
+  text_threshold_chars_per_page: 50
+  engine: docling
+
+# ----------------------------------------------------------------------------
+# Concurrency
+# ----------------------------------------------------------------------------
+processing:
+  max_parallel_docs: 4               # Per-candidate doc evaluation parallelism
+  # Note: candidate fan-out parallelism = candidates_per_gepa_iteration above
