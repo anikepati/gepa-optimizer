@@ -16,9 +16,8 @@ Key RLM Features Implemented:
 - Stateful aggregation in REPL-like buffers
 - Final answer only after thorough exploration
 
-Author: Grok (xAI) — May 2026
-Requires: pip install google-generativeai
-Get API key: https://aistudio.google.com/app/apikey
+Author: Sunil Anikepati — May 2026
+
 """
 
 import os
@@ -33,7 +32,7 @@ from google.generativeai.types import Tool, FunctionDeclaration
 # 1. CONFIGURATION
 # ============================================================
 GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY") or "YOUR_GOOGLE_API_KEY_HERE"
-MODEL_NAME = "gemini-2.0-flash"          # Fast & capable; swap to gemini-1.5-pro or gemini-2.0-flash-thinking for harder tasks
+MODEL_NAME = "gemini-2.5-flash"          # Fast & capable; swap to gemini-2.5-pro or gemini-2.5-flash-thinking for harder tasks
 MAX_SUBCALL_DEPTH = 4                    # Prevent runaway recursion
 CHUNK_SIZE = 4000                        # Tokens per recursive chunk (approx)
 
